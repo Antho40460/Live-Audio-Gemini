@@ -4,19 +4,21 @@ A production-ready SaaS platform for creating and embedding intelligent voice ch
 
 ## 🚀 Features
 
-- **Multi-tenant Architecture**: Secure user isolation with Row-Level Security
+- **Multi-tenant Architecture**: Secure user isolation with Prisma and NextAuth.js
 - **Voice AI Integration**: Real-time voice conversations with Google Gemini
 - **Visual Bot Studio**: Drag-and-drop customization with theme editor
 - **Knowledge Base**: Upload PDFs/CSVs for contextual AI responses
 - **Easy Embedding**: One-line iframe embed + WordPress plugin
 - **Usage-based Billing**: Stripe integration with metered pricing
-- **Enterprise Security**: CORS protection, token-based auth, GDPR compliance
+- **Enterprise Security**: JWT-based auth, CORS protection, GDPR compliance
 - **Real-time Analytics**: Detailed usage insights and performance metrics
 
 ## 🛠 Tech Stack
 
 - **Frontend**: Next.js 14, React, Tailwind CSS, Shadcn/ui
-- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL (Railway/Neon/Vercel Postgres)
+- **Authentication**: NextAuth.js with Google OAuth + Magic Links
 - **AI**: Google Gemini API for voice and text processing
 - **Payments**: Stripe with webhook integration
 - **3D Graphics**: React Three Fiber for interactive landing page
@@ -25,9 +27,10 @@ A production-ready SaaS platform for creating and embedding intelligent voice ch
 ## 📋 Prerequisites
 
 - Node.js 18+ and npm
-- Supabase account and project
+- PostgreSQL database (Railway, Neon, or Vercel Postgres)
 - Stripe account for payments
 - Google AI Studio account for Gemini API
+- Google Cloud Console for OAuth (optional)
 
 ## 🚀 Quick Start
 
@@ -48,38 +51,31 @@ cp .env.example .env.local
 ```
 
 Required environment variables:
-- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+- `DATABASE_URL` - Your PostgreSQL connection string
+- `NEXTAUTH_SECRET` - Random secret for NextAuth.js
 - `STRIPE_SECRET_KEY` - Stripe secret key
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
 - `GEMINI_API_KEY` - Google Gemini API key
 
 ### 3. Database Setup
 
-Initialize your Supabase database:
+Initialize your database:
 
 ```bash
-# Install Supabase CLI if you haven't already
-npm install -g supabase
-
-# Login to Supabase
-supabase login
-
-# Link to your project
-supabase link --project-ref your-project-ref
-
-# Push database schema
-supabase db push
-
-# Generate TypeScript types
+# Generate Prisma client
 npm run db:generate
+
+# Push schema to database
+npm run db:push
+
+# Seed with default plans
+npm run db:seed
 ```
 
 ### 4. Stripe Configuration
 
 1. Create products and prices in your Stripe dashboard
-2. Update the `stripe_price_id` fields in the `plans` table
+2. Update the `stripePriceId` fields in your database plans
 3. Set up webhook endpoint: `https://your-domain.com/api/webhooks/stripe`
 4. Configure webhook events: `customer.subscription.*`, `invoice.payment_*`
 
@@ -95,26 +91,37 @@ Visit `http://localhost:3000` to see the application.
 
 ```
 ├── app/                    # Next.js app directory
-│   ├── (auth)/            # Authentication pages
+│   ├── api/               # API routes
+│   ├── auth/              # Authentication pages
 │   ├── dashboard/         # User dashboard
-│   ├── embed/            # Bot embedding endpoints
-│   └── api/              # API routes
-├── components/           # React components
-│   ├── ui/              # Shadcn/ui components
-│   ├── landing/         # Landing page sections
-│   ├── dashboard/       # Dashboard components
-│   └── bot/             # Bot-related components
-├── lib/                 # Utility libraries
-├── supabase/           # Database migrations and functions
-├── types/              # TypeScript type definitions
-└── public/             # Static assets
+│   └── globals.css        # Global styles
+├── components/            # React components
+│   ├── ui/               # Shadcn/ui components
+│   ├── landing/          # Landing page sections
+│   └── dashboard/        # Dashboard components
+├── lib/                  # Utility libraries
+├── prisma/              # Database schema and migrations
+├── types/               # TypeScript type definitions
+└── public/              # Static assets
 ```
 
 ## 🔧 Key Components
 
-### Bot Studio
+### Authentication
+- NextAuth.js with Google OAuth and magic links
+- JWT-based sessions with role-based access
+- Secure middleware protection for dashboard routes
+
+### Database Schema
+- **Users**: Authentication and billing information
+- **Plans**: Subscription tiers with features
+- **Bots**: Voice bot configurations and settings
+- **Sessions**: Usage tracking for billing
+- **Files**: Knowledge base file management
+
+### Bot Studio (Coming Soon)
 - Visual theme editor with real-time preview
-- System prompt assistant powered by Gemini
+- AI-powered system prompt assistant
 - Knowledge base file upload and processing
 - Voice configuration and testing
 
@@ -125,8 +132,7 @@ Visit `http://localhost:3000` to see the application.
 - File upload and knowledge base management
 
 ### Embedding System
-- Secure iframe embedding with token authentication
-- WordPress plugin for easy integration
+- Secure iframe embedding with JWT authentication
 - CORS configuration for domain whitelisting
 - Real-time usage tracking
 
@@ -138,8 +144,8 @@ Visit `http://localhost:3000` to see the application.
 
 ## 🔒 Security Features
 
-- **Row-Level Security**: Database-level user isolation
-- **Token-based Auth**: Secure bot access with signed JWTs
+- **JWT Authentication**: Secure session management with NextAuth.js
+- **Database Security**: Prisma ORM with parameterized queries
 - **CORS Protection**: Domain whitelisting for embeds
 - **Rate Limiting**: API protection against abuse
 - **Data Encryption**: All data encrypted in transit and at rest
@@ -160,29 +166,39 @@ Visit `http://localhost:3000` to see the application.
 2. Configure environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
-### Manual Deployment
+### Database Providers
 
+**Railway** (Recommended for development):
 ```bash
-# Build the application
-npm run build
+# Install Railway CLI
+npm install -g @railway/cli
 
-# Start production server
-npm start
+# Login and create project
+railway login
+railway init
+railway add postgresql
+
+# Get connection string
+railway variables
 ```
 
-## 🔌 WordPress Plugin
+**Neon** (Recommended for production):
+1. Create account at neon.tech
+2. Create new project
+3. Copy connection string to `DATABASE_URL`
 
-The included WordPress plugin (`/wordpress-plugin/`) provides:
+**Vercel Postgres**:
+1. Add Postgres to your Vercel project
+2. Copy connection string from dashboard
+
+## 🔌 WordPress Plugin (Coming Soon)
+
+The included WordPress plugin will provide:
 
 - Easy bot embedding via shortcode
 - Admin settings panel
 - Automatic token generation
 - Responsive design integration
-
-Installation:
-1. Upload plugin ZIP to WordPress
-2. Configure API credentials in settings
-3. Use shortcode: `[live-audio-gemini bot="your-bot-slug"]`
 
 ## 📚 API Documentation
 
@@ -225,11 +241,11 @@ npm run lint
 
 ## 📈 Scaling Considerations
 
-- **Database**: Supabase automatically scales PostgreSQL
-- **File Storage**: Supabase Storage with CDN distribution
-- **Edge Functions**: Auto-scaling serverless functions
-- **Rate Limiting**: Implement Redis-based rate limiting for high traffic
+- **Database**: Use connection pooling for high traffic
+- **File Storage**: Implement CDN for knowledge base files
+- **Rate Limiting**: Add Redis-based rate limiting
 - **Monitoring**: Set up alerts for usage spikes and errors
+- **Caching**: Implement Redis caching for frequently accessed data
 
 ## 🤝 Contributing
 
@@ -251,6 +267,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🗺 Roadmap
 
+- [ ] Bot Studio with visual editor
+- [ ] WordPress plugin
 - [ ] Multi-language support for dashboard
 - [ ] Advanced analytics and reporting
 - [ ] Integration marketplace

@@ -1,0 +1,207 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application models
+model User {
+  id                String    @id @default(cuid())
+  name              String?
+  email             String    @unique
+  emailVerified     DateTime?
+  image             String?
+  role              Role      @default(USER)
+  stripeCustomerId  String?   @unique
+  creditsMinutes    Int       @default(50)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  bots          Bot[]
+  subscriptions Subscription[]
+  botSessions   BotSession[]
+  usageRecords  UsageRecord[]
+  files         File[]
+
+  @@map("users")
+}
+
+model Plan {
+  code            String  @id
+  name            String
+  description     String?
+  priceEur        Decimal @default(0)
+  minutesIncluded Int     @default(0)
+  maxBots         Int?    // null means unlimited
+  features        Json    @default("[]")
+  stripePriceId   String?
+  isActive        Boolean @default(true)
+  createdAt       DateTime @default(now())
+
+  // Relations
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  planCode             String
+  stripeSubscriptionId String?   @unique
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan @relation(fields: [planCode], references: [code])
+
+  @@map("subscriptions")
+}
+
+model Bot {
+  id            String  @id @default(cuid())
+  userId        String
+  name          String
+  slug          String  @unique
+  description   String?
+  systemPrompt  String  @default("You are a helpful AI assistant.")
+  voiceConfig   Json    @default("{\"voice\": \"en-US-Standard-A\", \"speed\": 1.0}")
+  themeConfig   Json    @default("{\"primaryColor\": \"#3b82f6\", \"fontFamily\": \"Inter\"}")
+  isActive      Boolean @default(true)
+  isPublic      Boolean @default(false)
+  allowedDomains String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions    BotSession[]
+  files       File[]
+
+  @@map("bots")
+}
+
+model BotSession {
+  id           String    @id @default(cuid())
+  botId        String
+  userId       String
+  sessionToken String    @unique
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  minutesUsed  Decimal   @default(0)
+  messageCount Int       @default(0)
+  userIp       String?
+  userAgent    String?
+  referrer     String?
+
+  // Relations
+  bot          Bot           @relation(fields: [botId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageRecords UsageRecord[]
+
+  @@map("bot_sessions")
+}
+
+model File {
+  id           String     @id @default(cuid())
+  botId        String
+  userId       String
+  filename     String
+  filePath     String
+  fileSize     BigInt?
+  mimeType     String?
+  status       FileStatus @default(PROCESSING)
+  errorMessage String?
+  createdAt    DateTime   @default(now())
+
+  // Relations
+  bot  Bot  @relation(fields: [botId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("files")
+}
+
+model UsageRecord {
+  id                  String    @id @default(cuid())
+  userId              String
+  sessionId           String
+  minutesUsed         Decimal
+  recordedAt          DateTime  @default(now())
+  billingPeriodStart  DateTime
+  billingPeriodEnd    DateTime
+
+  // Relations
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session BotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("usage_records")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+}
+
+enum FileStatus {
+  PROCESSING
+  READY
+  ERROR
+}

@@ -2,7 +2,6 @@
   "name": "live-audio-gemini-saas",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,18 +9,21 @@
     "lint": "next lint",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "db:generate": "supabase gen types typescript --local > types/database.types.ts",
-    "db:push": "supabase db push",
-    "db:reset": "supabase db reset",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
   },
   "dependencies": {
     "next": "^14.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@supabase/supabase-js": "^2.45.0",
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
-    "@supabase/auth-helpers-react": "^0.5.0",
+    "@prisma/client": "^5.19.1",
+    "prisma": "^5.19.1",
+    "next-auth": "^4.24.7",
+    "@next-auth/prisma-adapter": "^1.0.7",
     "@google/generative-ai": "^0.21.0",
     "@stripe/stripe-js": "^4.4.0",
     "stripe": "^16.12.0",
@@ -55,7 +57,13 @@
     "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.1.2",
     "react-colorful": "^5.6.1",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.14",
+    "multer": "^1.4.5-lts.1",
+    "@uploadthing/react": "^6.7.2",
+    "uploadthing": "^6.13.2"
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
@@ -63,6 +71,10 @@
     "@types/react-dom": "^18.3.0",
     "@types/three": "^0.169.0",
     "@types/uuid": "^10.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/nodemailer": "^6.4.15",
+    "@types/multer": "^1.4.12",
     "typescript": "^5.6.2",
     "tailwindcss": "^3.4.13",
     "postcss": "^8.4.47",
@@ -71,6 +83,6 @@
     "eslint-config-next": "^14.2.0",
     "vitest": "^2.1.1",
     "@playwright/test": "^1.47.2",
-    "supabase": "^1.200.3"
+    "tsx": "^4.19.1"
   }
 }
