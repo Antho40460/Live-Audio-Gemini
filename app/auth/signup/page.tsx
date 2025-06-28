@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+import { signIn, getProviders } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,11 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [providers, setProviders] = useState<any>(null)
+
+  useEffect(() => {
+    getProviders().then(setProviders)
+  }, [])
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,6 +30,7 @@ export default function SignUpPage() {
       const result = await signIn('email', {
         email,
         redirect: false,
+        callbackUrl: '/dashboard',
       })
 
       if (result?.error) {
@@ -50,6 +56,9 @@ export default function SignUpPage() {
     }
   }
 
+  const hasGoogleProvider = providers?.google
+  const hasEmailProvider = providers?.email
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <Card className="w-full max-w-md">
@@ -61,54 +70,69 @@ export default function SignUpPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Google Sign Up */}
-          <Button
-            onClick={handleGoogleSignUp}
-            disabled={isGoogleLoading}
-            variant="outline"
-            className="w-full"
-          >
-            {isGoogleLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Chrome className="mr-2 h-4 w-4" />
-            )}
-            Continue with Google
-          </Button>
+          {hasGoogleProvider && (
+            <>
+              <Button
+                onClick={handleGoogleSignUp}
+                disabled={isGoogleLoading}
+                variant="outline"
+                className="w-full"
+              >
+                {isGoogleLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Chrome className="mr-2 h-4 w-4" />
+                )}
+                Continue with Google
+              </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with email
-              </span>
-            </div>
-          </div>
+              {hasEmailProvider && (
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with email
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Email Sign Up */}
-          <form onSubmit={handleEmailSignUp} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+          {hasEmailProvider && (
+            <form onSubmit={handleEmailSignUp} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Mail className="mr-2 h-4 w-4" />
-              )}
-              Create account
-            </Button>
-          </form>
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="mr-2 h-4 w-4" />
+                )}
+                Create account
+              </Button>
+            </form>
+          )}
+
+          {!hasGoogleProvider && !hasEmailProvider && (
+            <div className="text-center text-muted-foreground">
+              <p>No authentication providers configured.</p>
+              <p className="text-sm">Please check your environment variables.</p>
+            </div>
+          )}
 
           {message && (
             <div className={`text-sm text-center ${
