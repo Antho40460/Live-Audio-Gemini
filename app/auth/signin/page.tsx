@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn, getSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { signIn, getProviders } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,13 +10,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { Mail, Chrome, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect } from 'react'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [providers, setProviders] = useState<any>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+
+  useEffect(() => {
+    getProviders().then(setProviders)
+  }, [])
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,6 +35,7 @@ export default function SignInPage() {
       const result = await signIn('email', {
         email,
         redirect: false,
+        callbackUrl,
       })
 
       if (result?.error) {
@@ -44,13 +53,16 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true)
     try {
-      await signIn('google', { callbackUrl: '/dashboard' })
+      await signIn('google', { callbackUrl })
     } catch (error) {
       console.error('Google sign-in error:', error)
     } finally {
       setIsGoogleLoading(false)
     }
   }
+
+  const hasGoogleProvider = providers?.google
+  const hasEmailProvider = providers?.email
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
@@ -63,54 +75,69 @@ export default function SignInPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Google Sign In */}
-          <Button
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading}
-            variant="outline"
-            className="w-full"
-          >
-            {isGoogleLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Chrome className="mr-2 h-4 w-4" />
-            )}
-            Continue with Google
-          </Button>
+          {hasGoogleProvider && (
+            <>
+              <Button
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+                variant="outline"
+                className="w-full"
+              >
+                {isGoogleLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Chrome className="mr-2 h-4 w-4" />
+                )}
+                Continue with Google
+              </Button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with email
-              </span>
-            </div>
-          </div>
+              {hasEmailProvider && (
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with email
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Email Sign In */}
-          <form onSubmit={handleEmailSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+          {hasEmailProvider && (
+            <form onSubmit={handleEmailSignIn} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Mail className="mr-2 h-4 w-4" />
-              )}
-              Send magic link
-            </Button>
-          </form>
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="mr-2 h-4 w-4" />
+                )}
+                Send magic link
+              </Button>
+            </form>
+          )}
+
+          {!hasGoogleProvider && !hasEmailProvider && (
+            <div className="text-center text-muted-foreground">
+              <p>No authentication providers configured.</p>
+              <p className="text-sm">Please check your environment variables.</p>
+            </div>
+          )}
 
           {message && (
             <div className={`text-sm text-center ${
