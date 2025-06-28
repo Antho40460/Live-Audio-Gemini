@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import { DashboardNav } from '@/components/dashboard/nav'
 import { DashboardHeader } from '@/components/dashboard/header'
+import { useEffect } from 'react'
 
 export default function DashboardLayout({
   children,
@@ -11,6 +12,12 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const { data: session, status } = useSession()
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      redirect('/auth/signin')
+    }
+  }, [status])
 
   if (status === 'loading') {
     return (
@@ -21,7 +28,7 @@ export default function DashboardLayout({
   }
 
   if (status === 'unauthenticated') {
-    redirect('/auth/signin')
+    return null
   }
 
   return (
