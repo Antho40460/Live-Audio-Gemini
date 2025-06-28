@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { prisma } from './prisma'
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -85,4 +86,32 @@ export const updateSubscription = async (subscriptionId: string, priceId: string
     ],
     proration_behavior: 'create_prorations',
   })
+}
+
+export const syncUserWithStripe = async (userId: string, email: string, name?: string) => {
+  try {
+    // Check if user already has a Stripe customer ID
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { stripeCustomerId: true }
+    })
+
+    if (user?.stripeCustomerId) {
+      return user.stripeCustomerId
+    }
+
+    // Create new Stripe customer
+    const customer = await getStripeCustomer(email, name)
+
+    // Update user with Stripe customer ID
+    await prisma.user.update({
+      where: { id: userId },
+      data: { stripeCustomerId: customer.id }
+    })
+
+    return customer.id
+  } catch (error) {
+    console.error('Error syncing user with Stripe:', error)
+    throw error
+  }
 }
